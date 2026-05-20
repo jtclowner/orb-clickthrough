@@ -1,15 +1,17 @@
 # Stop Misclicking Orbs
-Stop Misclicking Orbs makes selected minimap orb buttons click-through while a configurable hotkey mode is active.
+Stop Misclicking Orbs makes selected minimap orbs click-through while a configurable hotkey mode is active.
 
 It is intended for players who want to avoid accidentally clicking minimap orbs such as Quick-Prayers, Special Attack, Run, World Map, XP, or Wiki while playing.
+
+![Example - Stop misclicking the Run Energy orb](images/clickthrough.png)
 
 ## Features
 - Make selected minimap orbs click-through
 - Choose which orbs are affected
 - Configure hotkey behaviour:
     - Hold hotkey to click-through orbs
-    - Click-through orbs by default, hold hotkey to click orbs as normal
-    - Hotkey toggles between the two above modes
+    - Click-through orbs by default, and hold hotkey to click orbs as normal
+    - Toggle click-through mode with the hotkey
 - Handles the base Wiki orb and the replacement orb used by the Wiki plugin
 
 ## Configuration
@@ -23,3 +25,4 @@ Enable or disable click-through handling for each supported minimap orb.
 
 ### Miscellaneous
 - **Hide World Map tooltip**: Hides the World Map hover tooltip while orb click-through is active.
+
