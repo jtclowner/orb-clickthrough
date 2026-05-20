@@ -58,20 +58,27 @@ public class OrbClickthroughPlugin extends Plugin
 
 	private static final int WORLDMAP = InterfaceID.Orbs.WORLDMAP;
 	private static final int WORLDMAP_BACKING = InterfaceID.Orbs.WORLDMAP_BACKING;
-	private static final int WORLDMAP_TOOLTIP = InterfaceID.Orbs.WORLDMAP_TOOLTIP;
+	private static final int WORLDMAP_TOOLTIP = InterfaceID.Orbs.TOOLTIP;
 
 	// Base game wiki orb
 	private static final int WIKI_ICON = InterfaceID.Orbs.WIKI_ICON;
-	// Wiki orb parent container
-	// Used to target the orb created by Wiki plugin, a dynamic replacement child
+
+	// Wiki orb parent container.
+	// Used to target the orb created by Wiki plugin, a dynamic replacement child.
 	private static final int WIKI_CONTAINER = InterfaceID.Orbs.WIKI;
 
-	// The three radar noclick regions that cover the worldmap and wiki orbs, preventing clickthrough
-	private static final int MAP_NOCLICK_3 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_3;
-	private static final int MAP_NOCLICK_4 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_4;
-	private static final int MAP_NOCLICK_5 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_5;
-	// When either the world map orb or wiki orb is managed, the radar noclick regions are shifted and shrunk
-	// by this offset so the separated orb area can pass clicks through correctly
+	// Radar noclick regions that cover the world map and wiki orb area.
+	// Resizable Modern
+	private static final int MODERN_MAP_NOCLICK_3 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_3;
+	private static final int MODERN_MAP_NOCLICK_4 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_4;
+	private static final int MODERN_MAP_NOCLICK_5 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_5;
+
+	// Resizable Classic
+	private static final int CLASSIC_MAP_NOCLICK_3 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_3;
+	private static final int CLASSIC_MAP_NOCLICK_4 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_4;
+	private static final int CLASSIC_MAP_NOCLICK_5 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_5;
+
+	// Shift and shrink the radar noclick regions so the separated orb area can pass clicks through.
 	private static final int MAP_NOCLICK_3_X_OFFSET = 20;
 	private static final int MAP_NOCLICK_4_X_OFFSET = 35;
 	private static final int MAP_NOCLICK_5_X_OFFSET = 40;
@@ -413,9 +420,21 @@ public class OrbClickthroughPlugin extends Plugin
 
 	private void offsetMapNoClickRegions()
 	{
-		offsetWidgetBoundsRightAndShrinkWidth(MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
-		offsetWidgetBoundsRightAndShrinkWidth(MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
-		offsetWidgetBoundsRightAndShrinkWidth(MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
+		// Fixed layout: do nothing. Only the resizable layouts need these radar noclick offsets.
+		if (!client.isResized())
+		{
+			return;
+		}
+
+		// Resizable Modern. Missing/inactive widgets are safely ignored.
+		offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
+		offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
+		offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
+
+		// Resizable Classic. Missing/inactive widgets are safely ignored.
+		offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
+		offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
+		offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
 	}
 
 	private void offsetWidgetBoundsRightAndShrinkWidth(int widgetId, int xOffset)
