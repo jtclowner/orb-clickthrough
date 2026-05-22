@@ -21,10 +21,10 @@ public class OrbWidgetTransformer
     private static final int MAP_NOCLICK_2_SHRINK_LEFT = 4;
     private static final int MAP_NOCLICK_4_SHRINK_LEFT = 6;
 
-    // Existing world map/wiki trims.
-    private static final int MAP_NOCLICK_3_WORLD_MAP_WIKI_SHRINK_RIGHT = 20;
-    private static final int MAP_NOCLICK_4_WORLD_MAP_WIKI_SHRINK_RIGHT = 33;
-    private static final int MAP_NOCLICK_5_WORLD_MAP_WIKI_SHRINK_RIGHT = 40;
+    // Existing world map/wiki/radar-side trims, now applied whenever the plugin is enabled.
+    private static final int MAP_NOCLICK_3_SHRINK_RIGHT = 20;
+    private static final int MAP_NOCLICK_4_SHRINK_RIGHT = 33;
+    private static final int MAP_NOCLICK_5_SHRINK_RIGHT = 40;
 
     // Resize native MAP_NOCLICK_0 to expose the compass/logout orb area.
     private static final int MAP_NOCLICK_0_SHRINK_WIDTH = 37;
@@ -151,41 +151,50 @@ public class OrbWidgetTransformer
             int classicMapNoClick2,
             int classicMapNoClick3,
             int classicMapNoClick4,
-            int classicMapNoClick5,
-            boolean worldMapOrWikiEnabled
+            int classicMapNoClick5
     )
     {
-        int mapNoClick3ShrinkRight = worldMapOrWikiEnabled ? MAP_NOCLICK_3_WORLD_MAP_WIKI_SHRINK_RIGHT : 0;
-        int mapNoClick4ShrinkRight = worldMapOrWikiEnabled ? MAP_NOCLICK_4_WORLD_MAP_WIKI_SHRINK_RIGHT : 0;
-        int mapNoClick5ShrinkRight = worldMapOrWikiEnabled ? MAP_NOCLICK_5_WORLD_MAP_WIKI_SHRINK_RIGHT : 0;
-
-        // 1 and 2: always trim slightly from the visual left.
         shrinkFromLeft(modernMapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
         shrinkFromLeft(modernMapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
-
-        // 3 and 5: old world map/wiki behavior, trim from the visual right.
-        shrinkFromRightOrRestore(modernMapNoClick3, mapNoClick3ShrinkRight);
-        shrinkFromRightOrRestore(modernMapNoClick5, mapNoClick5ShrinkRight);
-
-        // 4: always trim slightly from the visual left, plus old world map/wiki right trim when needed.
-        shrinkFromLeftAndRight(modernMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, mapNoClick4ShrinkRight);
+        shrinkFromRight(modernMapNoClick3, MAP_NOCLICK_3_SHRINK_RIGHT);
+        shrinkFromLeftAndRight(modernMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, MAP_NOCLICK_4_SHRINK_RIGHT);
+        shrinkFromRight(modernMapNoClick5, MAP_NOCLICK_5_SHRINK_RIGHT);
 
         shrinkFromLeft(classicMapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
         shrinkFromLeft(classicMapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
-        shrinkFromRightOrRestore(classicMapNoClick3, mapNoClick3ShrinkRight);
-        shrinkFromRightOrRestore(classicMapNoClick5, mapNoClick5ShrinkRight);
-        shrinkFromLeftAndRight(classicMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, mapNoClick4ShrinkRight);
+        shrinkFromRight(classicMapNoClick3, MAP_NOCLICK_3_SHRINK_RIGHT);
+        shrinkFromLeftAndRight(classicMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, MAP_NOCLICK_4_SHRINK_RIGHT);
+        shrinkFromRight(classicMapNoClick5, MAP_NOCLICK_5_SHRINK_RIGHT);
     }
 
-    private void shrinkFromRightOrRestore(int widgetId, int pixels)
+    public void restoreNoClickRegions(
+            int modernMapNoClick0,
+            int modernMapNoClick1,
+            int modernMapNoClick2,
+            int modernMapNoClick3,
+            int modernMapNoClick4,
+            int modernMapNoClick5,
+            int classicMapNoClick0,
+            int classicMapNoClick1,
+            int classicMapNoClick2,
+            int classicMapNoClick3,
+            int classicMapNoClick4,
+            int classicMapNoClick5
+    )
     {
-        if (pixels <= 0)
-        {
-            restoreWidgetBounds(widgetId);
-            return;
-        }
+        restoreCompassLogoutNoClickRegions(modernMapNoClick0);
+        restoreWidgetBounds(modernMapNoClick1);
+        restoreWidgetBounds(modernMapNoClick2);
+        restoreWidgetBounds(modernMapNoClick3);
+        restoreWidgetBounds(modernMapNoClick4);
+        restoreWidgetBounds(modernMapNoClick5);
 
-        shrinkFromRight(widgetId, pixels);
+        restoreCompassLogoutNoClickRegions(classicMapNoClick0);
+        restoreWidgetBounds(classicMapNoClick1);
+        restoreWidgetBounds(classicMapNoClick2);
+        restoreWidgetBounds(classicMapNoClick3);
+        restoreWidgetBounds(classicMapNoClick4);
+        restoreWidgetBounds(classicMapNoClick5);
     }
 
     /*
@@ -483,9 +492,14 @@ public class OrbWidgetTransformer
 
         compassLogoutNoClickPatched.clear();
 
+        restoreOrbWidgetsChangedByUs();
+        restoreWidgetBounds();
+    }
+
+    public void restoreOrbWidgetsChangedByUs()
+    {
         restoreHiddenWidgets();
         restoreClickThroughWidgets();
-        restoreWidgetBounds();
         restoreTargetVerbs();
         restoreActions();
     }

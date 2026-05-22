@@ -204,13 +204,17 @@ public class OrbClickthroughPlugin extends Plugin
 			return;
 		}
 
+		// MAP_NOCLICK bounds are plugin-lifetime changes.
+		// They are not tied to hotkey state or individual orb config options.
+		syncNoClickRegions();
+
 		if (shouldApplyNow())
 		{
 			applyConfiguredOrbChanges();
 		}
 		else
 		{
-			widgetTransformer.restoreEverythingChangedByUs();
+			widgetTransformer.restoreOrbWidgetsChangedByUs();
 		}
 	}
 
@@ -318,8 +322,6 @@ public class OrbClickthroughPlugin extends Plugin
 			}
 		}
 
-		syncNoClickRegions();
-
 		if (config.manageStoreOrb())
 		{
 			widgetTransformer.allowClickThrough(STORE_BACKING);
@@ -353,23 +355,26 @@ public class OrbClickthroughPlugin extends Plugin
 		{
 			widgetTransformer.clearActions(LOGOUT_STONE);
 		}
-
-		if (config.manageCompassOrb() || config.manageLogoutOrb())
-		{
-			widgetTransformer.patchCompassLogoutNoClickRegions(MODERN_MAP_NOCLICK_0);
-			widgetTransformer.patchCompassLogoutNoClickRegions(CLASSIC_MAP_NOCLICK_0);
-		}
-		else
-		{
-			widgetTransformer.restoreCompassLogoutNoClickRegions(MODERN_MAP_NOCLICK_0);
-			widgetTransformer.restoreCompassLogoutNoClickRegions(CLASSIC_MAP_NOCLICK_0);
-		}
 	}
 
 	private void syncNoClickRegions()
 	{
 		if (!client.isResized())
 		{
+			widgetTransformer.restoreNoClickRegions(
+					MODERN_MAP_NOCLICK_0,
+					MODERN_MAP_NOCLICK_1,
+					MODERN_MAP_NOCLICK_2,
+					MODERN_MAP_NOCLICK_3,
+					MODERN_MAP_NOCLICK_4,
+					MODERN_MAP_NOCLICK_5,
+					CLASSIC_MAP_NOCLICK_0,
+					CLASSIC_MAP_NOCLICK_1,
+					CLASSIC_MAP_NOCLICK_2,
+					CLASSIC_MAP_NOCLICK_3,
+					CLASSIC_MAP_NOCLICK_4,
+					CLASSIC_MAP_NOCLICK_5
+			);
 			return;
 		}
 
@@ -383,9 +388,11 @@ public class OrbClickthroughPlugin extends Plugin
 				CLASSIC_MAP_NOCLICK_2,
 				CLASSIC_MAP_NOCLICK_3,
 				CLASSIC_MAP_NOCLICK_4,
-				CLASSIC_MAP_NOCLICK_5,
-				config.manageWorldMapOrb() || config.manageWikiOrb()
+				CLASSIC_MAP_NOCLICK_5
 		);
+
+		widgetTransformer.patchCompassLogoutNoClickRegions(MODERN_MAP_NOCLICK_0);
+		widgetTransformer.patchCompassLogoutNoClickRegions(CLASSIC_MAP_NOCLICK_0);
 	}
 
 	@Provides
