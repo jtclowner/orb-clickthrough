@@ -428,13 +428,7 @@ public class OrbWidgetTransformer
 
     private void createCompassLogoutNoClickExtra(int mapNoClick0WidgetId, Widget mapNoClick0)
     {
-        Widget parent = mapNoClick0.getParent();
-
-        if (parent == null)
-        {
-            return;
-        }
-
+        Widget parent = mapNoClick0;
         Widget extra = compassLogoutNoClickExtras.get(mapNoClick0WidgetId);
 
         if (extra == null || extra.getParent() != parent)
