@@ -65,18 +65,21 @@ public class OrbClickthroughPlugin extends Plugin
 	private static final int COMPASS_NOCLICK_CHILD_INDEX = 0;
 	private static final int COMPASS_ACTION_CHILD_INDEX = 1;
 
-
 	private static final int LOGOUT_STONE = InterfaceID.ToplevelPreEoc.STONE10;
 
 	// Radar noclick regions that cover the world map/wiki/logout/radar orb areas.
 	// Resizable Modern
 	private static final int MODERN_MAP_NOCLICK_0 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_0; // Radar/logout
+	private static final int MODERN_MAP_NOCLICK_1 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_1;
+	private static final int MODERN_MAP_NOCLICK_2 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_2;
 	private static final int MODERN_MAP_NOCLICK_3 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_3;
 	private static final int MODERN_MAP_NOCLICK_4 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_4;
 	private static final int MODERN_MAP_NOCLICK_5 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_5;
 
 	// Resizable Classic
 	private static final int CLASSIC_MAP_NOCLICK_0 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_0; // Radar/logout
+	private static final int CLASSIC_MAP_NOCLICK_1 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_1;
+	private static final int CLASSIC_MAP_NOCLICK_2 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_2;
 	private static final int CLASSIC_MAP_NOCLICK_3 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_3;
 	private static final int CLASSIC_MAP_NOCLICK_4 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_4;
 	private static final int CLASSIC_MAP_NOCLICK_5 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_5;
@@ -315,10 +318,7 @@ public class OrbClickthroughPlugin extends Plugin
 			}
 		}
 
-		if (config.manageWorldMapOrb() || config.manageWikiOrb())
-		{
-			offsetMapNoClickRegions();
-		}
+		syncNoClickRegions();
 
 		if (config.manageStoreOrb())
 		{
@@ -333,18 +333,18 @@ public class OrbClickthroughPlugin extends Plugin
 
 			if (compassClick != null)
 			{
-				Widget compassActionChild = compassClick.getChild(COMPASS_ACTION_CHILD_INDEX);
-
-				if (compassActionChild != null)
-				{
-					widgetTransformer.clearActions(compassActionChild);
-				}
-
 				Widget compassNoClickChild = compassClick.getChild(COMPASS_NOCLICK_CHILD_INDEX);
 
 				if (compassNoClickChild != null)
 				{
 					widgetTransformer.allowClickThrough(compassNoClickChild);
+				}
+
+				Widget compassActionChild = compassClick.getChild(COMPASS_ACTION_CHILD_INDEX);
+
+				if (compassActionChild != null)
+				{
+					widgetTransformer.clearActions(compassActionChild);
 				}
 			}
 		}
@@ -366,21 +366,25 @@ public class OrbClickthroughPlugin extends Plugin
 		}
 	}
 
-	private void offsetMapNoClickRegions()
+	private void syncNoClickRegions()
 	{
-		// Fixed layout: do nothing. Only the resizable layouts need these radar noclick offsets.
 		if (!client.isResized())
 		{
 			return;
 		}
 
-		widgetTransformer.offsetWorldMapWikiNoClickRegions(
+		widgetTransformer.updateNoClickRegions(
+				MODERN_MAP_NOCLICK_1,
+				MODERN_MAP_NOCLICK_2,
 				MODERN_MAP_NOCLICK_3,
 				MODERN_MAP_NOCLICK_4,
 				MODERN_MAP_NOCLICK_5,
+				CLASSIC_MAP_NOCLICK_1,
+				CLASSIC_MAP_NOCLICK_2,
 				CLASSIC_MAP_NOCLICK_3,
 				CLASSIC_MAP_NOCLICK_4,
-				CLASSIC_MAP_NOCLICK_5
+				CLASSIC_MAP_NOCLICK_5,
+				config.manageWorldMapOrb() || config.manageWikiOrb()
 		);
 	}
 

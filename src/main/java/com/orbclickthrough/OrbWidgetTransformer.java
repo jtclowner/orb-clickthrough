@@ -16,10 +16,15 @@ import net.runelite.api.widgets.WidgetType;
 @Singleton
 public class OrbWidgetTransformer
 {
-    // Shift and shrink the world map/wiki noclick regions so the separated orb area can pass clicks through.
-    private static final int MAP_NOCLICK_3_X_OFFSET = 20;
-    private static final int MAP_NOCLICK_4_X_OFFSET = 35;
-    private static final int MAP_NOCLICK_5_X_OFFSET = 40;
+    // Small always-on trims so noclick regions do not overlap exposed orb edges.
+    private static final int MAP_NOCLICK_1_SHRINK_LEFT = 4;
+    private static final int MAP_NOCLICK_2_SHRINK_LEFT = 4;
+    private static final int MAP_NOCLICK_4_SHRINK_LEFT = 6;
+
+    // Existing world map/wiki trims.
+    private static final int MAP_NOCLICK_3_WORLD_MAP_WIKI_SHRINK_RIGHT = 20;
+    private static final int MAP_NOCLICK_4_WORLD_MAP_WIKI_SHRINK_RIGHT = 33;
+    private static final int MAP_NOCLICK_5_WORLD_MAP_WIKI_SHRINK_RIGHT = 40;
 
     // Resize native MAP_NOCLICK_0 to expose the compass/logout orb area.
     private static final int MAP_NOCLICK_0_SHRINK_WIDTH = 37;
@@ -136,25 +141,61 @@ public class OrbWidgetTransformer
         actionsChangedByUs.add(widget);
     }
 
-    public void offsetWorldMapWikiNoClickRegions(
+    public void updateNoClickRegions(
+            int modernMapNoClick1,
+            int modernMapNoClick2,
             int modernMapNoClick3,
             int modernMapNoClick4,
             int modernMapNoClick5,
+            int classicMapNoClick1,
+            int classicMapNoClick2,
             int classicMapNoClick3,
             int classicMapNoClick4,
-            int classicMapNoClick5
+            int classicMapNoClick5,
+            boolean worldMapOrWikiEnabled
     )
     {
-        offsetWidgetBoundsRightAndShrinkWidth(modernMapNoClick3, MAP_NOCLICK_3_X_OFFSET);
-        offsetWidgetBoundsRightAndShrinkWidth(modernMapNoClick4, MAP_NOCLICK_4_X_OFFSET);
-        offsetWidgetBoundsRightAndShrinkWidth(modernMapNoClick5, MAP_NOCLICK_5_X_OFFSET);
+        int mapNoClick3ShrinkRight = worldMapOrWikiEnabled ? MAP_NOCLICK_3_WORLD_MAP_WIKI_SHRINK_RIGHT : 0;
+        int mapNoClick4ShrinkRight = worldMapOrWikiEnabled ? MAP_NOCLICK_4_WORLD_MAP_WIKI_SHRINK_RIGHT : 0;
+        int mapNoClick5ShrinkRight = worldMapOrWikiEnabled ? MAP_NOCLICK_5_WORLD_MAP_WIKI_SHRINK_RIGHT : 0;
 
-        offsetWidgetBoundsRightAndShrinkWidth(classicMapNoClick3, MAP_NOCLICK_3_X_OFFSET);
-        offsetWidgetBoundsRightAndShrinkWidth(classicMapNoClick4, MAP_NOCLICK_4_X_OFFSET);
-        offsetWidgetBoundsRightAndShrinkWidth(classicMapNoClick5, MAP_NOCLICK_5_X_OFFSET);
+        // 1 and 2: always trim slightly from the visual left.
+        shrinkFromLeft(modernMapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
+        shrinkFromLeft(modernMapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
+
+        // 3 and 5: old world map/wiki behavior, trim from the visual right.
+        shrinkFromRightOrRestore(modernMapNoClick3, mapNoClick3ShrinkRight);
+        shrinkFromRightOrRestore(modernMapNoClick5, mapNoClick5ShrinkRight);
+
+        // 4: always trim slightly from the visual left, plus old world map/wiki right trim when needed.
+        shrinkFromLeftAndRight(modernMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, mapNoClick4ShrinkRight);
+
+        shrinkFromLeft(classicMapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
+        shrinkFromLeft(classicMapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
+        shrinkFromRightOrRestore(classicMapNoClick3, mapNoClick3ShrinkRight);
+        shrinkFromRightOrRestore(classicMapNoClick5, mapNoClick5ShrinkRight);
+        shrinkFromLeftAndRight(classicMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, mapNoClick4ShrinkRight);
     }
 
-    private void offsetWidgetBoundsRightAndShrinkWidth(int widgetId, int xOffset)
+    private void shrinkFromRightOrRestore(int widgetId, int pixels)
+    {
+        if (pixels <= 0)
+        {
+            restoreWidgetBounds(widgetId);
+            return;
+        }
+
+        shrinkFromRight(widgetId, pixels);
+    }
+
+    /*
+     * Shrinks the widget from the visual left edge:
+     * - normal left-anchored widgets: move X right and reduce width
+     * - right-anchored widgets: reduce width only
+     *
+     * This keeps the visual right edge roughly fixed.
+     */
+    private void shrinkFromLeft(int widgetId, int pixels)
     {
         Widget widget = client.getWidget(widgetId);
 
@@ -183,8 +224,118 @@ public class OrbWidgetTransformer
             return;
         }
 
-        widget.setOriginalX(originalValue.originalX + xOffset);
-        widget.setOriginalWidth(Math.max(0, originalValue.originalWidth - xOffset));
+        if (widget.getXPositionMode() == 2)
+        {
+            widget.setOriginalX(originalValue.originalX);
+        }
+        else
+        {
+            widget.setOriginalX(originalValue.originalX + pixels);
+        }
+
+        widget.setOriginalWidth(Math.max(0, originalValue.originalWidth - pixels));
+        widget.revalidate();
+
+        boundsChangedByUs.add(widgetId);
+    }
+
+    /*
+     * Shrinks the widget from the visual right edge:
+     * - normal left-anchored widgets: reduce width only
+     * - right-anchored widgets: move X right and reduce width
+     *
+     * This keeps the visual left edge roughly fixed.
+     */
+    private void shrinkFromRight(int widgetId, int pixels)
+    {
+        Widget widget = client.getWidget(widgetId);
+
+        if (widget == null)
+        {
+            return;
+        }
+
+        if (!boundsChangedByUs.contains(widgetId))
+        {
+            originalBounds.put(
+                    widgetId,
+                    new WidgetBounds(
+                            widget.getOriginalX(),
+                            widget.getOriginalY(),
+                            widget.getOriginalWidth(),
+                            widget.getOriginalHeight()
+                    )
+            );
+        }
+
+        WidgetBounds originalValue = originalBounds.get(widgetId);
+
+        if (originalValue == null)
+        {
+            return;
+        }
+
+        if (widget.getXPositionMode() == 2)
+        {
+            widget.setOriginalX(originalValue.originalX + pixels);
+        }
+        else
+        {
+            widget.setOriginalX(originalValue.originalX);
+        }
+
+        widget.setOriginalWidth(Math.max(0, originalValue.originalWidth - pixels));
+        widget.revalidate();
+
+        boundsChangedByUs.add(widgetId);
+    }
+
+    /*
+     * Applies both edge trims from the same saved original bounds.
+     */
+    private void shrinkFromLeftAndRight(int widgetId, int shrinkLeftPixels, int shrinkRightPixels)
+    {
+        Widget widget = client.getWidget(widgetId);
+
+        if (widget == null)
+        {
+            return;
+        }
+
+        if (!boundsChangedByUs.contains(widgetId))
+        {
+            originalBounds.put(
+                    widgetId,
+                    new WidgetBounds(
+                            widget.getOriginalX(),
+                            widget.getOriginalY(),
+                            widget.getOriginalWidth(),
+                            widget.getOriginalHeight()
+                    )
+            );
+        }
+
+        WidgetBounds originalValue = originalBounds.get(widgetId);
+
+        if (originalValue == null)
+        {
+            return;
+        }
+
+        int newWidth = Math.max(0, originalValue.originalWidth - shrinkLeftPixels - shrinkRightPixels);
+
+        if (widget.getXPositionMode() == 2)
+        {
+            // Right-anchored mode.
+            widget.setOriginalX(originalValue.originalX + shrinkRightPixels);
+        }
+        else
+        {
+            // Normal left-anchored mode.
+            widget.setOriginalX(originalValue.originalX + shrinkLeftPixels);
+        }
+
+        widget.setOriginalWidth(newWidth);
         widget.revalidate();
 
         boundsChangedByUs.add(widgetId);
