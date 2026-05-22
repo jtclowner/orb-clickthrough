@@ -1,13 +1,6 @@
 package com.orbclickthrough;
 
 import com.google.inject.Provides;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -95,21 +88,13 @@ public class OrbClickthroughPlugin extends Plugin
 	@Inject
 	private OrbClickthroughConfig config;
 
+	@Inject
+	private OrbWidgetTransformer widgetTransformer;
+
 	private HotkeyListener hotkeyListener;
 
 	private boolean hotkeyHeld;
 	private boolean toggleActive;
-
-	private final Set<Widget> hiddenByUs = Collections.newSetFromMap(new IdentityHashMap<>());
-	private final Set<Widget> noClickThroughChangedByUs = Collections.newSetFromMap(new IdentityHashMap<>());
-	private final Set<Widget> targetVerbChangedByUs = Collections.newSetFromMap(new IdentityHashMap<>());
-	private final Set<Widget> actionsChangedByUs = Collections.newSetFromMap(new IdentityHashMap<>());
-	private final Set<Integer> boundsChangedByUs = new HashSet<>();
-
-	private final Map<Widget, Boolean> originalNoClickThrough = new IdentityHashMap<>();
-	private final Map<Widget, String> originalTargetVerb = new IdentityHashMap<>();
-	private final Map<Widget, String[]> originalActions = new IdentityHashMap<>();
-	private final Map<Integer, WidgetBounds> originalBounds = new HashMap<>();
 
 	@Override
 	protected void startUp()
@@ -159,7 +144,7 @@ public class OrbClickthroughPlugin extends Plugin
 
 		clientThread.invokeLater(() ->
 		{
-			restoreEverythingChangedByUs();
+			widgetTransformer.restoreEverythingChangedByUs();
 			hotkeyHeld = false;
 			toggleActive = false;
 		});
@@ -172,7 +157,7 @@ public class OrbClickthroughPlugin extends Plugin
 	{
 		if (event.getGameState() != GameState.LOGGED_IN)
 		{
-			restoreEverythingChangedByUs();
+			widgetTransformer.restoreEverythingChangedByUs();
 			hotkeyHeld = false;
 			toggleActive = false;
 			return;
@@ -191,7 +176,7 @@ public class OrbClickthroughPlugin extends Plugin
 
 		clientThread.invokeLater(() ->
 		{
-			restoreEverythingChangedByUs();
+			widgetTransformer.restoreEverythingChangedByUs();
 			hotkeyHeld = false;
 			toggleActive = false;
 			syncState();
@@ -217,7 +202,7 @@ public class OrbClickthroughPlugin extends Plugin
 		}
 		else
 		{
-			restoreEverythingChangedByUs();
+			widgetTransformer.restoreEverythingChangedByUs();
 		}
 	}
 
@@ -240,70 +225,70 @@ public class OrbClickthroughPlugin extends Plugin
 	{
 		if (config.hideWorldMapTooltip())
 		{
-			hideWidget(WORLDMAP_TOOLTIP);
+			widgetTransformer.hideWidget(WORLDMAP_TOOLTIP);
 		}
 
 		if (config.manageHealthOrb())
 		{
-			allowClickThrough(HEALTH_BACKING);
-			allowClickThrough(HEALTH_BUTTON);
-			clearActions(HEALTH_BUTTON);
+			widgetTransformer.allowClickThrough(HEALTH_BACKING);
+			widgetTransformer.allowClickThrough(HEALTH_BUTTON);
+			widgetTransformer.clearActions(HEALTH_BUTTON);
 		}
 
 		if (config.managePrayerOrb())
 		{
-			allowClickThrough(PRAYER_BACKING);
-			allowClickThrough(PRAYER_BUTTON);
-			clearActions(PRAYER_BUTTON);
+			widgetTransformer.allowClickThrough(PRAYER_BACKING);
+			widgetTransformer.allowClickThrough(PRAYER_BUTTON);
+			widgetTransformer.clearActions(PRAYER_BUTTON);
 		}
 
 		if (config.manageRunOrb())
 		{
-			allowClickThrough(RUNENERGY_BACKING);
-			allowClickThrough(RUN_BUTTON);
-			clearActions(RUN_BUTTON);
+			widgetTransformer.allowClickThrough(RUNENERGY_BACKING);
+			widgetTransformer.allowClickThrough(RUN_BUTTON);
+			widgetTransformer.clearActions(RUN_BUTTON);
 		}
 
 		if (config.manageSpecialAttackOrb())
 		{
-			allowClickThrough(SPECENERGY_BACKING);
-			allowClickThrough(SPEC_BUTTON);
-			clearActions(SPEC_BUTTON);
+			widgetTransformer.allowClickThrough(SPECENERGY_BACKING);
+			widgetTransformer.allowClickThrough(SPEC_BUTTON);
+			widgetTransformer.clearActions(SPEC_BUTTON);
 		}
 
 		if (config.manageWorldMapOrb())
 		{
-			allowClickThrough(WORLDMAP_BACKING);
-			allowClickThrough(WORLDMAP);
-			clearActions(WORLDMAP);
+			widgetTransformer.allowClickThrough(WORLDMAP_BACKING);
+			widgetTransformer.allowClickThrough(WORLDMAP);
+			widgetTransformer.clearActions(WORLDMAP);
 		}
 
 		if (config.manageXpOrb())
 		{
-			allowClickThrough(XP_DROPS);
-			clearActions(XP_DROPS);
+			widgetTransformer.allowClickThrough(XP_DROPS);
+			widgetTransformer.clearActions(XP_DROPS);
 		}
 
 		if (config.manageActivityOrb())
 		{
-			allowClickThrough(ACTIVITY_BACKING);
-			allowClickThrough(ACTIVITY_BUTTON);
-			clearActions(ACTIVITY_BUTTON);
+			widgetTransformer.allowClickThrough(ACTIVITY_BACKING);
+			widgetTransformer.allowClickThrough(ACTIVITY_BUTTON);
+			widgetTransformer.clearActions(ACTIVITY_BUTTON);
 		}
 
 		if (config.manageWikiOrb())
 		{
-			allowClickThrough(WIKI_ICON);
-			clearTargetVerb(WIKI_ICON);
-			clearActions(WIKI_ICON);
+			widgetTransformer.allowClickThrough(WIKI_ICON);
+			widgetTransformer.clearTargetVerb(WIKI_ICON);
+			widgetTransformer.clearActions(WIKI_ICON);
 
 			Widget wikiContainer = client.getWidget(WIKI_CONTAINER);
 
 			if (wikiContainer != null)
 			{
-				allowClickThrough(wikiContainer);
-				clearTargetVerb(wikiContainer);
-				clearActions(wikiContainer);
+				widgetTransformer.allowClickThrough(wikiContainer);
+				widgetTransformer.clearTargetVerb(wikiContainer);
+				widgetTransformer.clearActions(wikiContainer);
 
 				// The Wiki plugin adds its replacement orb as a dynamic child of WIKI_CONTAINER.
 				Widget[] dynamicChildren = wikiContainer.getDynamicChildren();
@@ -317,9 +302,9 @@ public class OrbClickthroughPlugin extends Plugin
 							continue;
 						}
 
-						allowClickThrough(child);
-						clearTargetVerb(child);
-						clearActions(child);
+						widgetTransformer.allowClickThrough(child);
+						widgetTransformer.clearTargetVerb(child);
+						widgetTransformer.clearActions(child);
 					}
 				}
 			}
@@ -332,90 +317,10 @@ public class OrbClickthroughPlugin extends Plugin
 
 		if (config.manageStoreOrb())
 		{
-			allowClickThrough(STORE_BACKING);
-			allowClickThrough(STORE_BUTTON);
-			clearActions(STORE_BUTTON);
+			widgetTransformer.allowClickThrough(STORE_BACKING);
+			widgetTransformer.allowClickThrough(STORE_BUTTON);
+			widgetTransformer.clearActions(STORE_BUTTON);
 		}
-	}
-
-	private void hideWidget(int widgetId)
-	{
-		hideWidget(client.getWidget(widgetId));
-	}
-
-	private void hideWidget(Widget widget)
-	{
-		if (widget == null || widget.isHidden())
-		{
-			return;
-		}
-
-		widget.setHidden(true);
-		hiddenByUs.add(widget);
-	}
-
-	private void allowClickThrough(int widgetId)
-	{
-		allowClickThrough(client.getWidget(widgetId));
-	}
-
-	private void allowClickThrough(Widget widget)
-	{
-		if (widget == null)
-		{
-			return;
-		}
-
-		if (!noClickThroughChangedByUs.contains(widget))
-		{
-			originalNoClickThrough.put(widget, widget.getNoClickThrough());
-		}
-
-		widget.setNoClickThrough(false);
-		noClickThroughChangedByUs.add(widget);
-	}
-
-	private void clearTargetVerb(int widgetId)
-	{
-		clearTargetVerb(client.getWidget(widgetId));
-	}
-
-	private void clearTargetVerb(Widget widget)
-	{
-		if (widget == null)
-		{
-			return;
-		}
-
-		if (!targetVerbChangedByUs.contains(widget))
-		{
-			originalTargetVerb.put(widget, widget.getTargetVerb());
-		}
-
-		widget.setTargetVerb("");
-		targetVerbChangedByUs.add(widget);
-	}
-
-	private void clearActions(int widgetId)
-	{
-		clearActions(client.getWidget(widgetId));
-	}
-
-	private void clearActions(Widget widget)
-	{
-		if (widget == null)
-		{
-			return;
-		}
-
-		if (!actionsChangedByUs.contains(widget))
-		{
-			String[] actions = widget.getActions();
-			originalActions.put(widget, actions == null ? null : Arrays.copyOf(actions, actions.length));
-		}
-
-		widget.clearActions();
-		actionsChangedByUs.add(widget);
 	}
 
 	private void offsetMapNoClickRegions()
@@ -427,150 +332,14 @@ public class OrbClickthroughPlugin extends Plugin
 		}
 
 		// Resizable Modern. Missing/inactive widgets are safely ignored.
-		offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
-		offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
-		offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
+		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
+		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
+		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
 
 		// Resizable Classic. Missing/inactive widgets are safely ignored.
-		offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
-		offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
-		offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
-	}
-
-	private void offsetWidgetBoundsRightAndShrinkWidth(int widgetId, int xOffset)
-	{
-		Widget widget = client.getWidget(widgetId);
-
-		if (widget == null)
-		{
-			return;
-		}
-
-		if (!boundsChangedByUs.contains(widgetId))
-		{
-			originalBounds.put(
-					widgetId,
-					new WidgetBounds(widget.getOriginalX(), widget.getOriginalWidth())
-			);
-		}
-
-		WidgetBounds originalValue = originalBounds.get(widgetId);
-
-		if (originalValue == null)
-		{
-			return;
-		}
-
-		widget.setOriginalX(originalValue.originalX + xOffset);
-		widget.setOriginalWidth(Math.max(0, originalValue.originalWidth - xOffset));
-		widget.revalidate();
-
-		boundsChangedByUs.add(widgetId);
-	}
-
-	private void restoreEverythingChangedByUs()
-	{
-		restoreHiddenWidgets();
-		restoreClickThroughWidgets();
-		restoreWidgetBounds();
-		restoreTargetVerbs();
-		restoreActions();
-	}
-
-	private void restoreHiddenWidgets()
-	{
-		for (Widget widget : new HashSet<>(hiddenByUs))
-		{
-			if (widget != null)
-			{
-				widget.setHidden(false);
-			}
-
-			hiddenByUs.remove(widget);
-		}
-	}
-
-	private void restoreClickThroughWidgets()
-	{
-		for (Widget widget : new HashSet<>(noClickThroughChangedByUs))
-		{
-			Boolean originalValue = originalNoClickThrough.remove(widget);
-
-			if (widget != null && originalValue != null)
-			{
-				widget.setNoClickThrough(originalValue);
-			}
-
-			noClickThroughChangedByUs.remove(widget);
-		}
-	}
-
-	private void restoreWidgetBounds()
-	{
-		for (Integer widgetId : new HashSet<>(boundsChangedByUs))
-		{
-			Widget widget = client.getWidget(widgetId);
-			WidgetBounds originalValue = originalBounds.remove(widgetId);
-
-			if (widget != null && originalValue != null)
-			{
-				widget.setOriginalX(originalValue.originalX);
-				widget.setOriginalWidth(originalValue.originalWidth);
-				widget.revalidate();
-			}
-
-			boundsChangedByUs.remove(widgetId);
-		}
-	}
-
-	private void restoreTargetVerbs()
-	{
-		for (Widget widget : new HashSet<>(targetVerbChangedByUs))
-		{
-			String originalValue = originalTargetVerb.remove(widget);
-
-			if (widget != null)
-			{
-				widget.setTargetVerb(originalValue);
-			}
-
-			targetVerbChangedByUs.remove(widget);
-		}
-	}
-
-	private void restoreActions()
-	{
-		for (Widget widget : new HashSet<>(actionsChangedByUs))
-		{
-			String[] originalValue = originalActions.remove(widget);
-
-			if (widget != null)
-			{
-				widget.clearActions();
-
-				if (originalValue != null)
-				{
-					for (int i = 0; i < originalValue.length; i++)
-					{
-						widget.setAction(i, originalValue[i]);
-					}
-				}
-			}
-
-			actionsChangedByUs.remove(widget);
-		}
-	}
-
-	private static final class WidgetBounds
-	{
-		private final int originalX;
-		private final int originalWidth;
-
-		private WidgetBounds(int originalX, int originalWidth)
-		{
-			this.originalX = originalX;
-			this.originalWidth = originalWidth;
-		}
+		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
+		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
+		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
 	}
 
 	@Provides
