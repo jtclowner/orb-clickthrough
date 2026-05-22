@@ -11,11 +11,33 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetType;
 
 @Singleton
 public class OrbWidgetTransformer
 {
+    // Shift and shrink the world map/wiki noclick regions so the separated orb area can pass clicks through.
+    private static final int MAP_NOCLICK_3_X_OFFSET = 20;
+    private static final int MAP_NOCLICK_4_X_OFFSET = 35;
+    private static final int MAP_NOCLICK_5_X_OFFSET = 40;
+
+    // Resize native MAP_NOCLICK_0 to expose the compass/logout orb area.
+    private static final int MAP_NOCLICK_0_SHRINK_WIDTH = 37;
+    private static final int MAP_NOCLICK_0_MOVE_LEFT = 11;
+    private static final int MAP_NOCLICK_0_SHIFT_DOWN = 24;
+    private static final int MAP_NOCLICK_0_HEIGHT = 24;
+
+    // Extra dynamic blocker created by this plugin.
+    // Needed because shrinking MAP_NOCLICK_0 exposes part of the minimap between the logout/radar widget areas.
+    private static final int MAP_NOCLICK_EXTRA_MOVE_LEFT = 18;
+    private static final int MAP_NOCLICK_EXTRA_MOVE_UP = 22;
+    private static final int MAP_NOCLICK_EXTRA_EXTRA_WIDTH = -34;
+    private static final int MAP_NOCLICK_EXTRA_HEIGHT = 23;
+
     private final Client client;
+
+    private final Set<Integer> compassLogoutNoClickPatched = new HashSet<>();
+    private final Map<Integer, Widget> compassLogoutNoClickExtras = new HashMap<>();
 
     private final Set<Widget> hiddenByUs = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Set<Widget> noClickThroughChangedByUs = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -114,7 +136,25 @@ public class OrbWidgetTransformer
         actionsChangedByUs.add(widget);
     }
 
-    public void offsetWidgetBoundsRightAndShrinkWidth(int widgetId, int xOffset)
+    public void offsetWorldMapWikiNoClickRegions(
+            int modernMapNoClick3,
+            int modernMapNoClick4,
+            int modernMapNoClick5,
+            int classicMapNoClick3,
+            int classicMapNoClick4,
+            int classicMapNoClick5
+    )
+    {
+        offsetWidgetBoundsRightAndShrinkWidth(modernMapNoClick3, MAP_NOCLICK_3_X_OFFSET);
+        offsetWidgetBoundsRightAndShrinkWidth(modernMapNoClick4, MAP_NOCLICK_4_X_OFFSET);
+        offsetWidgetBoundsRightAndShrinkWidth(modernMapNoClick5, MAP_NOCLICK_5_X_OFFSET);
+
+        offsetWidgetBoundsRightAndShrinkWidth(classicMapNoClick3, MAP_NOCLICK_3_X_OFFSET);
+        offsetWidgetBoundsRightAndShrinkWidth(classicMapNoClick4, MAP_NOCLICK_4_X_OFFSET);
+        offsetWidgetBoundsRightAndShrinkWidth(classicMapNoClick5, MAP_NOCLICK_5_X_OFFSET);
+    }
+
+    private void offsetWidgetBoundsRightAndShrinkWidth(int widgetId, int xOffset)
     {
         Widget widget = client.getWidget(widgetId);
 
@@ -127,7 +167,12 @@ public class OrbWidgetTransformer
         {
             originalBounds.put(
                     widgetId,
-                    new WidgetBounds(widget.getOriginalX(), widget.getOriginalWidth())
+                    new WidgetBounds(
+                            widget.getOriginalX(),
+                            widget.getOriginalY(),
+                            widget.getOriginalWidth(),
+                            widget.getOriginalHeight()
+                    )
             );
         }
 
@@ -145,8 +190,148 @@ public class OrbWidgetTransformer
         boundsChangedByUs.add(widgetId);
     }
 
+    public void patchCompassLogoutNoClickRegions(int mapNoClick0WidgetId)
+    {
+        if (compassLogoutNoClickPatched.contains(mapNoClick0WidgetId))
+        {
+            return;
+        }
+
+        if (!client.isResized())
+        {
+            restoreCompassLogoutNoClickRegions(mapNoClick0WidgetId);
+            return;
+        }
+
+        Widget mapNoClick0 = client.getWidget(mapNoClick0WidgetId);
+
+        if (mapNoClick0 == null)
+        {
+            restoreCompassLogoutNoClickRegions(mapNoClick0WidgetId);
+            return;
+        }
+
+        if (!boundsChangedByUs.contains(mapNoClick0WidgetId))
+        {
+            originalBounds.put(
+                    mapNoClick0WidgetId,
+                    new WidgetBounds(
+                            mapNoClick0.getOriginalX(),
+                            mapNoClick0.getOriginalY(),
+                            mapNoClick0.getOriginalWidth(),
+                            mapNoClick0.getOriginalHeight()
+                    )
+            );
+        }
+
+        WidgetBounds originalValue = originalBounds.get(mapNoClick0WidgetId);
+
+        if (originalValue == null)
+        {
+            return;
+        }
+
+        if (mapNoClick0.getXPositionMode() == 2)
+        {
+            // Right-anchored mode:
+            // larger OriginalX = visually left.
+            mapNoClick0.setOriginalX(originalValue.originalX + MAP_NOCLICK_0_MOVE_LEFT);
+        }
+        else
+        {
+            // Normal left-anchored mode:
+            // smaller OriginalX = visually left.
+            mapNoClick0.setOriginalX(originalValue.originalX - MAP_NOCLICK_0_MOVE_LEFT);
+        }
+
+        mapNoClick0.setOriginalY(originalValue.originalY + MAP_NOCLICK_0_SHIFT_DOWN);
+        mapNoClick0.setOriginalWidth(Math.max(0, originalValue.originalWidth - MAP_NOCLICK_0_SHRINK_WIDTH));
+        mapNoClick0.setOriginalHeight(MAP_NOCLICK_0_HEIGHT);
+
+        mapNoClick0.setHidden(false);
+        mapNoClick0.setNoClickThrough(true);
+        mapNoClick0.setNoScrollThrough(true);
+        mapNoClick0.revalidate();
+
+        boundsChangedByUs.add(mapNoClick0WidgetId);
+
+        createCompassLogoutNoClickExtra(mapNoClick0WidgetId, mapNoClick0);
+        compassLogoutNoClickPatched.add(mapNoClick0WidgetId);
+    }
+
+    public void restoreCompassLogoutNoClickRegions(int mapNoClick0WidgetId)
+    {
+        restoreCompassLogoutNoClickExtra(mapNoClick0WidgetId);
+        restoreWidgetBounds(mapNoClick0WidgetId);
+        compassLogoutNoClickPatched.remove(mapNoClick0WidgetId);
+    }
+
+    private void createCompassLogoutNoClickExtra(int mapNoClick0WidgetId, Widget mapNoClick0)
+    {
+        Widget parent = mapNoClick0.getParent();
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        Widget extra = compassLogoutNoClickExtras.get(mapNoClick0WidgetId);
+
+        if (extra == null || extra.getParent() != parent)
+        {
+            extra = parent.createChild(-1, WidgetType.LAYER);
+            compassLogoutNoClickExtras.put(mapNoClick0WidgetId, extra);
+        }
+
+        extra.setXPositionMode(mapNoClick0.getXPositionMode());
+        extra.setYPositionMode(mapNoClick0.getYPositionMode());
+        extra.setWidthMode(mapNoClick0.getWidthMode());
+        extra.setHeightMode(mapNoClick0.getHeightMode());
+
+        if (extra.getXPositionMode() == 2)
+        {
+            // Right-anchored mode:
+            // larger OriginalX = visually left.
+            extra.setOriginalX(mapNoClick0.getOriginalX() + MAP_NOCLICK_EXTRA_MOVE_LEFT);
+        }
+        else
+        {
+            // Normal left-anchored mode:
+            // smaller OriginalX = visually left.
+            extra.setOriginalX(mapNoClick0.getOriginalX() - MAP_NOCLICK_EXTRA_MOVE_LEFT);
+        }
+
+        extra.setOriginalY(mapNoClick0.getOriginalY() - MAP_NOCLICK_EXTRA_MOVE_UP);
+        extra.setOriginalWidth(Math.max(0, mapNoClick0.getOriginalWidth() + MAP_NOCLICK_EXTRA_EXTRA_WIDTH));
+        extra.setOriginalHeight(MAP_NOCLICK_EXTRA_HEIGHT);
+
+        extra.setHidden(false);
+        extra.setNoClickThrough(true);
+        extra.setNoScrollThrough(true);
+        extra.setHasListener(true);
+        extra.revalidate();
+    }
+
+    private void restoreCompassLogoutNoClickExtra(int mapNoClick0WidgetId)
+    {
+        Widget extra = compassLogoutNoClickExtras.remove(mapNoClick0WidgetId);
+
+        if (extra != null)
+        {
+            extra.setHidden(true);
+            extra.revalidate();
+        }
+    }
+
     public void restoreEverythingChangedByUs()
     {
+        for (Integer widgetId : new HashSet<>(compassLogoutNoClickExtras.keySet()))
+        {
+            restoreCompassLogoutNoClickExtra(widgetId);
+        }
+
+        compassLogoutNoClickPatched.clear();
+
         restoreHiddenWidgets();
         restoreClickThroughWidgets();
         restoreWidgetBounds();
@@ -186,18 +371,25 @@ public class OrbWidgetTransformer
     {
         for (Integer widgetId : new HashSet<>(boundsChangedByUs))
         {
-            Widget widget = client.getWidget(widgetId);
-            WidgetBounds originalValue = originalBounds.remove(widgetId);
-
-            if (widget != null && originalValue != null)
-            {
-                widget.setOriginalX(originalValue.originalX);
-                widget.setOriginalWidth(originalValue.originalWidth);
-                widget.revalidate();
-            }
-
-            boundsChangedByUs.remove(widgetId);
+            restoreWidgetBounds(widgetId);
         }
+    }
+
+    private void restoreWidgetBounds(int widgetId)
+    {
+        Widget widget = client.getWidget(widgetId);
+        WidgetBounds originalValue = originalBounds.remove(widgetId);
+
+        if (widget != null && originalValue != null)
+        {
+            widget.setOriginalX(originalValue.originalX);
+            widget.setOriginalY(originalValue.originalY);
+            widget.setOriginalWidth(originalValue.originalWidth);
+            widget.setOriginalHeight(originalValue.originalHeight);
+            widget.revalidate();
+        }
+
+        boundsChangedByUs.remove(widgetId);
     }
 
     private void restoreTargetVerbs()
@@ -241,12 +433,16 @@ public class OrbWidgetTransformer
     private static final class WidgetBounds
     {
         private final int originalX;
+        private final int originalY;
         private final int originalWidth;
+        private final int originalHeight;
 
-        private WidgetBounds(int originalX, int originalWidth)
+        private WidgetBounds(int originalX, int originalY, int originalWidth, int originalHeight)
         {
             this.originalX = originalX;
+            this.originalY = originalY;
             this.originalWidth = originalWidth;
+            this.originalHeight = originalHeight;
         }
     }
 }

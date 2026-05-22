@@ -164,6 +164,30 @@ public interface OrbClickthroughConfig extends Config
 	}
 
 	@ConfigItem(
+			keyName = "manageCompassOrb",
+			name = "Compass orb",
+			description = "Make the Compass orb click-through when active.",
+			section = orbsSection,
+			position = 19
+	)
+	default boolean manageCompassOrb()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+			keyName = "manageLogoutOrb",
+			name = "Logout orb",
+			description = "Make the Logout orb click-through when active.",
+			section = orbsSection,
+			position = 20
+	)
+	default boolean manageLogoutOrb()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 			keyName = "hideWorldMapTooltip",
 			name = "Hide World Map tooltip",
 			description = "Hide the World Map hover tooltip while orb click-through is active.",

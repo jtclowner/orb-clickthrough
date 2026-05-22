@@ -60,21 +60,26 @@ public class OrbClickthroughPlugin extends Plugin
 	// Used to target the orb created by Wiki plugin, a dynamic replacement child.
 	private static final int WIKI_CONTAINER = InterfaceID.Orbs.WIKI;
 
-	// Radar noclick regions that cover the world map and wiki orb area.
+	// Compass/logout widgets.
+	private static final int COMPASS_CLICK = InterfaceID.ToplevelPreEoc.COMPASSCLICK;
+	private static final int COMPASS_NOCLICK_CHILD_INDEX = 0;
+	private static final int COMPASS_ACTION_CHILD_INDEX = 1;
+
+
+	private static final int LOGOUT_STONE = InterfaceID.ToplevelPreEoc.STONE10;
+
+	// Radar noclick regions that cover the world map/wiki/logout/radar orb areas.
 	// Resizable Modern
+	private static final int MODERN_MAP_NOCLICK_0 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_0; // Radar/logout
 	private static final int MODERN_MAP_NOCLICK_3 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_3;
 	private static final int MODERN_MAP_NOCLICK_4 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_4;
 	private static final int MODERN_MAP_NOCLICK_5 = InterfaceID.ToplevelPreEoc.MAP_NOCLICK_5;
 
 	// Resizable Classic
+	private static final int CLASSIC_MAP_NOCLICK_0 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_0; // Radar/logout
 	private static final int CLASSIC_MAP_NOCLICK_3 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_3;
 	private static final int CLASSIC_MAP_NOCLICK_4 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_4;
 	private static final int CLASSIC_MAP_NOCLICK_5 = InterfaceID.ToplevelOsrsStretch.MAP_NOCLICK_5;
-
-	// Shift and shrink the radar noclick regions so the separated orb area can pass clicks through.
-	private static final int MAP_NOCLICK_3_X_OFFSET = 20;
-	private static final int MAP_NOCLICK_4_X_OFFSET = 35;
-	private static final int MAP_NOCLICK_5_X_OFFSET = 40;
 
 	@Inject
 	private Client client;
@@ -321,6 +326,44 @@ public class OrbClickthroughPlugin extends Plugin
 			widgetTransformer.allowClickThrough(STORE_BUTTON);
 			widgetTransformer.clearActions(STORE_BUTTON);
 		}
+
+		if (config.manageCompassOrb())
+		{
+			Widget compassClick = client.getWidget(COMPASS_CLICK);
+
+			if (compassClick != null)
+			{
+				Widget compassActionChild = compassClick.getChild(COMPASS_ACTION_CHILD_INDEX);
+
+				if (compassActionChild != null)
+				{
+					widgetTransformer.clearActions(compassActionChild);
+				}
+
+				Widget compassNoClickChild = compassClick.getChild(COMPASS_NOCLICK_CHILD_INDEX);
+
+				if (compassNoClickChild != null)
+				{
+					widgetTransformer.allowClickThrough(compassNoClickChild);
+				}
+			}
+		}
+
+		if (config.manageLogoutOrb())
+		{
+			widgetTransformer.clearActions(LOGOUT_STONE);
+		}
+
+		if (config.manageCompassOrb() || config.manageLogoutOrb())
+		{
+			widgetTransformer.patchCompassLogoutNoClickRegions(MODERN_MAP_NOCLICK_0);
+			widgetTransformer.patchCompassLogoutNoClickRegions(CLASSIC_MAP_NOCLICK_0);
+		}
+		else
+		{
+			widgetTransformer.restoreCompassLogoutNoClickRegions(MODERN_MAP_NOCLICK_0);
+			widgetTransformer.restoreCompassLogoutNoClickRegions(CLASSIC_MAP_NOCLICK_0);
+		}
 	}
 
 	private void offsetMapNoClickRegions()
@@ -331,15 +374,14 @@ public class OrbClickthroughPlugin extends Plugin
 			return;
 		}
 
-		// Resizable Modern. Missing/inactive widgets are safely ignored.
-		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
-		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
-		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(MODERN_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
-
-		// Resizable Classic. Missing/inactive widgets are safely ignored.
-		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_3, MAP_NOCLICK_3_X_OFFSET);
-		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_4, MAP_NOCLICK_4_X_OFFSET);
-		widgetTransformer.offsetWidgetBoundsRightAndShrinkWidth(CLASSIC_MAP_NOCLICK_5, MAP_NOCLICK_5_X_OFFSET);
+		widgetTransformer.offsetWorldMapWikiNoClickRegions(
+				MODERN_MAP_NOCLICK_3,
+				MODERN_MAP_NOCLICK_4,
+				MODERN_MAP_NOCLICK_5,
+				CLASSIC_MAP_NOCLICK_3,
+				CLASSIC_MAP_NOCLICK_4,
+				CLASSIC_MAP_NOCLICK_5
+		);
 	}
 
 	@Provides
