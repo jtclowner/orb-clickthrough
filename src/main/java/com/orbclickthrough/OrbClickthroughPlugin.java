@@ -12,6 +12,7 @@ import net.runelite.api.MenuEntry;
 import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.PostMenuSort;
+import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -186,6 +187,10 @@ public class OrbClickthroughPlugin extends Plugin
 	private boolean hotkeyHeld;
 	private boolean toggleActive;
 
+	private boolean noClickRegionsSynced;
+	private boolean noClickRegionsSyncedForResizedMode;
+	private boolean orbWidgetsApplied;
+
 	@Override
 	protected void startUp()
 	{
@@ -220,6 +225,7 @@ public class OrbClickthroughPlugin extends Plugin
 		};
 
 		keyManager.registerKeyListener(hotkeyListener);
+		markNoClickRegionsDirty();
 		clientThread.invokeLater(this::syncState);
 	}
 
@@ -237,6 +243,8 @@ public class OrbClickthroughPlugin extends Plugin
 			widgetTransformer.restoreEverythingChangedByUs();
 			hotkeyHeld = false;
 			toggleActive = false;
+			orbWidgetsApplied = false;
+			markNoClickRegionsDirty();
 		});
 
 		log.debug("Orb Clickthrough stopped");
@@ -250,7 +258,33 @@ public class OrbClickthroughPlugin extends Plugin
 			widgetTransformer.restoreEverythingChangedByUs();
 			hotkeyHeld = false;
 			toggleActive = false;
+			orbWidgetsApplied = false;
+			markNoClickRegionsDirty();
 			return;
+		}
+
+		markNoClickRegionsDirty();
+		clientThread.invokeLater(this::syncState);
+	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded event)
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		/*
+		 * Widgets can be recreated after login, layout changes, or other plugin changes.
+		 * Resync on widget loads instead of doing the same work every client tick.
+		 */
+		markNoClickRegionsDirty();
+
+		if (orbWidgetsApplied)
+		{
+			widgetTransformer.restoreOrbWidgetsChangedByUs();
+			orbWidgetsApplied = false;
 		}
 
 		clientThread.invokeLater(this::syncState);
@@ -269,6 +303,8 @@ public class OrbClickthroughPlugin extends Plugin
 			widgetTransformer.restoreEverythingChangedByUs();
 			hotkeyHeld = false;
 			toggleActive = false;
+			orbWidgetsApplied = false;
+			markNoClickRegionsDirty();
 			syncState();
 		});
 	}
@@ -276,7 +312,7 @@ public class OrbClickthroughPlugin extends Plugin
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		syncState();
+		syncExtraNoClickRegionState();
 	}
 
 	@Subscribe
@@ -310,14 +346,40 @@ public class OrbClickthroughPlugin extends Plugin
 		// They are not tied to hotkey state or individual orb config options.
 		syncNoClickRegions();
 
-		if (shouldApplyNow())
+		boolean shouldApply = shouldApplyNow();
+
+		if (shouldApply)
 		{
-			applyConfiguredOrbChanges();
+			if (!orbWidgetsApplied)
+			{
+				applyConfiguredOrbChanges();
+				orbWidgetsApplied = true;
+			}
 		}
-		else
+		else if (orbWidgetsApplied)
 		{
 			widgetTransformer.restoreOrbWidgetsChangedByUs();
+			orbWidgetsApplied = false;
 		}
+	}
+
+	private void syncExtraNoClickRegionState()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN)
+		{
+			return;
+		}
+
+		/*
+		 * This is intentionally not a full per-tick noclick-region sync.
+		 *
+		 * The dynamic extra blocker must be maintained every tick because other plugins
+		 * can hide/remove the minimap without firing a useful widget-load event.
+		 * patchExtraNoClickRegion() already restores our duplicate when the source
+		 * MAP_NOCLICK_0 widget is hidden, missing, or fixed-mode is active.
+		 */
+		widgetTransformer.patchExtraNoClickRegion(MODERN_MAP_NOCLICK_0);
+		widgetTransformer.patchExtraNoClickRegion(CLASSIC_MAP_NOCLICK_0);
 	}
 
 	private boolean shouldApplyNow()
@@ -459,7 +521,16 @@ public class OrbClickthroughPlugin extends Plugin
 
 	private void syncNoClickRegions()
 	{
-		if (!client.isResized())
+		boolean resized = client.isResized();
+
+		if (noClickRegionsSynced && noClickRegionsSyncedForResizedMode == resized)
+		{
+			return;
+		}
+
+		noClickRegionsSyncedForResizedMode = resized;
+
+		if (!resized)
 		{
 			widgetTransformer.restoreNoClickRegions(
 					MODERN_MAP_NOCLICK_0,
@@ -475,6 +546,8 @@ public class OrbClickthroughPlugin extends Plugin
 					CLASSIC_MAP_NOCLICK_4,
 					CLASSIC_MAP_NOCLICK_5
 			);
+
+			noClickRegionsSynced = true;
 			return;
 		}
 
@@ -493,6 +566,13 @@ public class OrbClickthroughPlugin extends Plugin
 
 		widgetTransformer.patchExtraNoClickRegion(MODERN_MAP_NOCLICK_0);
 		widgetTransformer.patchExtraNoClickRegion(CLASSIC_MAP_NOCLICK_0);
+
+		noClickRegionsSynced = true;
+	}
+
+	private void markNoClickRegionsDirty()
+	{
+		noClickRegionsSynced = false;
 	}
 
 	private boolean isBlockedOrbMenuEntry(MenuEntry entry)
