@@ -471,8 +471,8 @@ public class OrbClickthroughPlugin extends Plugin
 				CLASSIC_MAP_NOCLICK_5
 		);
 
-		widgetTransformer.patchCompassLogoutNoClickRegions(MODERN_MAP_NOCLICK_0);
-		widgetTransformer.patchCompassLogoutNoClickRegions(CLASSIC_MAP_NOCLICK_0);
+		widgetTransformer.patchExtraNoClickRegion(MODERN_MAP_NOCLICK_0);
+		widgetTransformer.patchExtraNoClickRegion(CLASSIC_MAP_NOCLICK_0);
 	}
 
 	private boolean isBlockedOrbMenuEntry(MenuEntry entry)

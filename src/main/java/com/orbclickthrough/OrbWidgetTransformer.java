@@ -21,12 +21,10 @@ public class OrbWidgetTransformer
     private static final int MAP_NOCLICK_2_SHRINK_LEFT = 4;
     private static final int MAP_NOCLICK_4_SHRINK_LEFT = 6;
 
-    // Existing world map/wiki/radar-side trims, now applied whenever the plugin is enabled.
     private static final int MAP_NOCLICK_3_SHRINK_RIGHT = 20;
     private static final int MAP_NOCLICK_4_SHRINK_RIGHT = 33;
     private static final int MAP_NOCLICK_5_SHRINK_RIGHT = 40;
 
-    // Resize native MAP_NOCLICK_0 to expose the compass/logout orb area.
     private static final int MAP_NOCLICK_0_SHRINK_WIDTH = 37;
     private static final int MAP_NOCLICK_0_MOVE_LEFT = 11;
     private static final int MAP_NOCLICK_0_SHIFT_DOWN = 24;
@@ -41,8 +39,8 @@ public class OrbWidgetTransformer
 
     private final Client client;
 
-    private final Set<Integer> compassLogoutNoClickPatched = new HashSet<>();
-    private final Map<Integer, Widget> compassLogoutNoClickExtras = new HashMap<>();
+    private final Set<Integer> extraNoClickRegionPatched = new HashSet<>();
+    private final Map<Integer, Widget> extraNoClickRegions = new HashMap<>();
 
     private final Set<Widget> hiddenByUs = Collections.newSetFromMap(new IdentityHashMap<>());
     private final Set<Widget> noClickThroughChangedByUs = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -182,14 +180,14 @@ public class OrbWidgetTransformer
             int classicMapNoClick5
     )
     {
-        restoreCompassLogoutNoClickRegions(modernMapNoClick0);
+        restoreExtraNoClickRegion(modernMapNoClick0);
         restoreWidgetBounds(modernMapNoClick1);
         restoreWidgetBounds(modernMapNoClick2);
         restoreWidgetBounds(modernMapNoClick3);
         restoreWidgetBounds(modernMapNoClick4);
         restoreWidgetBounds(modernMapNoClick5);
 
-        restoreCompassLogoutNoClickRegions(classicMapNoClick0);
+        restoreExtraNoClickRegion(classicMapNoClick0);
         restoreWidgetBounds(classicMapNoClick1);
         restoreWidgetBounds(classicMapNoClick2);
         restoreWidgetBounds(classicMapNoClick3);
@@ -350,24 +348,28 @@ public class OrbWidgetTransformer
         boundsChangedByUs.add(widgetId);
     }
 
-    public void patchCompassLogoutNoClickRegions(int mapNoClick0WidgetId)
+    public void patchExtraNoClickRegion(int mapNoClick0WidgetId)
     {
-        if (compassLogoutNoClickPatched.contains(mapNoClick0WidgetId))
-        {
-            return;
-        }
-
         if (!client.isResized())
         {
-            restoreCompassLogoutNoClickRegions(mapNoClick0WidgetId);
+            restoreExtraNoClickRegion(mapNoClick0WidgetId);
             return;
         }
 
         Widget mapNoClick0 = client.getWidget(mapNoClick0WidgetId);
 
-        if (mapNoClick0 == null)
+        if (mapNoClick0 == null || isHiddenOrAncestorHidden(mapNoClick0))
         {
-            restoreCompassLogoutNoClickRegions(mapNoClick0WidgetId);
+            restoreExtraNoClickRegion(mapNoClick0WidgetId);
+            return;
+        }
+
+        /*
+         * This check must happen after the visibility/null check.
+         * Other plugins can hide/remove the minimap after we already patched it.
+         */
+        if (extraNoClickRegionPatched.contains(mapNoClick0WidgetId))
+        {
             return;
         }
 
@@ -415,53 +417,79 @@ public class OrbWidgetTransformer
 
         boundsChangedByUs.add(mapNoClick0WidgetId);
 
-        createCompassLogoutNoClickExtra(mapNoClick0WidgetId, mapNoClick0);
-        compassLogoutNoClickPatched.add(mapNoClick0WidgetId);
+        createExtraNoClickRegion(mapNoClick0WidgetId, mapNoClick0);
+        extraNoClickRegionPatched.add(mapNoClick0WidgetId);
     }
 
-    public void restoreCompassLogoutNoClickRegions(int mapNoClick0WidgetId)
+    public void restoreExtraNoClickRegion(int mapNoClick0WidgetId)
     {
-        restoreCompassLogoutNoClickExtra(mapNoClick0WidgetId);
+        restoreExtraNoClickRegionWidget(mapNoClick0WidgetId);
         restoreWidgetBounds(mapNoClick0WidgetId);
-        compassLogoutNoClickPatched.remove(mapNoClick0WidgetId);
+        extraNoClickRegionPatched.remove(mapNoClick0WidgetId);
     }
 
-    private void createCompassLogoutNoClickExtra(int mapNoClick0WidgetId, Widget mapNoClick0)
+    private void createExtraNoClickRegion(int mapNoClick0WidgetId, Widget mapNoClick0)
     {
-        Widget parent = mapNoClick0;
+        Widget parent = mapNoClick0.getParent();
 
-        Widget extra = compassLogoutNoClickExtras.get(mapNoClick0WidgetId);
+        if (parent == null)
+        {
+            restoreExtraNoClickRegion(mapNoClick0WidgetId);
+            return;
+        }
 
-        if (extra == null || extra.getParent() != parent)
+        Widget extra = extraNoClickRegions.get(mapNoClick0WidgetId);
+
+        if (extra != null && extra.getParent() != parent)
+        {
+            extra.setHidden(true);
+            extra.revalidate();
+            extra = null;
+        }
+
+        if (extra == null)
         {
             extra = parent.createChild(-1, WidgetType.LAYER);
-            compassLogoutNoClickExtras.put(mapNoClick0WidgetId, extra);
+            extraNoClickRegions.put(mapNoClick0WidgetId, extra);
         }
 
         /*
-         * This widget is a child of MAP_NOCLICK_0.
-         * Its position is therefore relative to MAP_NOCLICK_0, not the minimap parent.
+         * This widget is a sibling of MAP_NOCLICK_0.
+         * Sibling positioning is needed because child widgets
+         * did not reliably block scene clicks.
          */
-        extra.setXPositionMode(0);
-        extra.setYPositionMode(0);
-        extra.setWidthMode(0);
-        extra.setHeightMode(0);
+        extra.setXPositionMode(mapNoClick0.getXPositionMode());
+        extra.setYPositionMode(mapNoClick0.getYPositionMode());
+        extra.setWidthMode(mapNoClick0.getWidthMode());
+        extra.setHeightMode(mapNoClick0.getHeightMode());
 
-        extra.setOriginalX(-MAP_NOCLICK_EXTRA_MOVE_LEFT);
-        extra.setOriginalY(-MAP_NOCLICK_EXTRA_MOVE_UP);
+        if (extra.getXPositionMode() == 2)
+        {
+            // Right-anchored mode:
+            // larger OriginalX = visually left.
+            extra.setOriginalX(mapNoClick0.getOriginalX() + MAP_NOCLICK_EXTRA_MOVE_LEFT);
+        }
+        else
+        {
+            // Normal left-anchored mode:
+            // smaller OriginalX = visually left.
+            extra.setOriginalX(mapNoClick0.getOriginalX() - MAP_NOCLICK_EXTRA_MOVE_LEFT);
+        }
+
+        extra.setOriginalY(mapNoClick0.getOriginalY() - MAP_NOCLICK_EXTRA_MOVE_UP);
         extra.setOriginalWidth(Math.max(0, mapNoClick0.getOriginalWidth() + MAP_NOCLICK_EXTRA_EXTRA_WIDTH));
         extra.setOriginalHeight(MAP_NOCLICK_EXTRA_HEIGHT);
 
         extra.setHidden(false);
         extra.setNoClickThrough(true);
         extra.setNoScrollThrough(true);
-        extra.setHasListener(true);
+        extra.setHasListener(false);
         extra.revalidate();
     }
 
-    private void restoreCompassLogoutNoClickExtra(int mapNoClick0WidgetId)
+    private void restoreExtraNoClickRegionWidget(int mapNoClick0WidgetId)
     {
-        Widget extra = compassLogoutNoClickExtras.remove(mapNoClick0WidgetId);
+        Widget extra = extraNoClickRegions.remove(mapNoClick0WidgetId);
 
         if (extra != null)
         {
@@ -470,14 +498,31 @@ public class OrbWidgetTransformer
         }
     }
 
-    public void restoreEverythingChangedByUs()
+    private boolean isHiddenOrAncestorHidden(Widget widget)
     {
-        for (Integer widgetId : new HashSet<>(compassLogoutNoClickExtras.keySet()))
+        Widget current = widget;
+
+        while (current != null)
         {
-            restoreCompassLogoutNoClickExtra(widgetId);
+            if (current.isHidden())
+            {
+                return true;
+            }
+
+            current = current.getParent();
         }
 
-        compassLogoutNoClickPatched.clear();
+        return false;
+    }
+
+    public void restoreEverythingChangedByUs()
+    {
+        for (Integer widgetId : new HashSet<>(extraNoClickRegions.keySet()))
+        {
+            restoreExtraNoClickRegionWidget(widgetId);
+        }
+
+        extraNoClickRegionPatched.clear();
 
         restoreOrbWidgetsChangedByUs();
         restoreWidgetBounds();
