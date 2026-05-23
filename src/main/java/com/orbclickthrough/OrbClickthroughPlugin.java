@@ -142,7 +142,8 @@ public class OrbClickthroughPlugin extends Plugin
 	private static final int WIKI_CONTAINER = InterfaceID.Orbs.WIKI;
 
 	// Compass/logout widgets.
-	private static final int COMPASS_CLICK = InterfaceID.ToplevelPreEoc.COMPASSCLICK;
+	private static final int MODERN_COMPASS_CLICK = InterfaceID.ToplevelPreEoc.COMPASSCLICK;
+	private static final int CLASSIC_COMPASS_CLICK = InterfaceID.ToplevelOsrsStretch.COMPASSCLICK;
 	private static final int COMPASS_NOCLICK_CHILD_INDEX = 0;
 	private static final int COMPASS_ACTION_CHILD_INDEX = 1;
 
@@ -411,18 +412,37 @@ public class OrbClickthroughPlugin extends Plugin
 
 		if (config.manageCompassOrb())
 		{
-			Widget compassClick = client.getWidget(COMPASS_CLICK);
+			Widget modernCompassClick = client.getWidget(MODERN_COMPASS_CLICK);
 
-			if (compassClick != null)
+			if (modernCompassClick != null)
 			{
-				Widget compassNoClickChild = compassClick.getChild(COMPASS_NOCLICK_CHILD_INDEX);
+				Widget compassNoClickChild = modernCompassClick.getChild(COMPASS_NOCLICK_CHILD_INDEX);
 
 				if (compassNoClickChild != null)
 				{
 					widgetTransformer.allowClickThrough(compassNoClickChild);
 				}
 
-				Widget compassActionChild = compassClick.getChild(COMPASS_ACTION_CHILD_INDEX);
+				Widget compassActionChild = modernCompassClick.getChild(COMPASS_ACTION_CHILD_INDEX);
+
+				if (compassActionChild != null)
+				{
+					widgetTransformer.allowClickThrough(compassActionChild);
+				}
+			}
+
+			Widget classicCompassClick = client.getWidget(CLASSIC_COMPASS_CLICK);
+
+			if (classicCompassClick != null)
+			{
+				Widget compassNoClickChild = classicCompassClick.getChild(COMPASS_NOCLICK_CHILD_INDEX);
+
+				if (compassNoClickChild != null)
+				{
+					widgetTransformer.allowClickThrough(compassNoClickChild);
+				}
+
+				Widget compassActionChild = classicCompassClick.getChild(COMPASS_ACTION_CHILD_INDEX);
 
 				if (compassActionChild != null)
 				{
@@ -545,7 +565,7 @@ public class OrbClickthroughPlugin extends Plugin
 		}
 
 		if (config.manageCompassOrb()
-				&& isWidgetOrChildOfAny(widgetId, COMPASS_CLICK)
+				&& isWidgetOrChildOfAny(widgetId, MODERN_COMPASS_CLICK, CLASSIC_COMPASS_CLICK)
 				&& COMPASS_MENU_OPTIONS.contains(option))
 		{
 			return true;
