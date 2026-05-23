@@ -429,6 +429,7 @@ public class OrbWidgetTransformer
     private void createCompassLogoutNoClickExtra(int mapNoClick0WidgetId, Widget mapNoClick0)
     {
         Widget parent = mapNoClick0;
+
         Widget extra = compassLogoutNoClickExtras.get(mapNoClick0WidgetId);
 
         if (extra == null || extra.getParent() != parent)
@@ -437,25 +438,17 @@ public class OrbWidgetTransformer
             compassLogoutNoClickExtras.put(mapNoClick0WidgetId, extra);
         }
 
-        extra.setXPositionMode(mapNoClick0.getXPositionMode());
-        extra.setYPositionMode(mapNoClick0.getYPositionMode());
-        extra.setWidthMode(mapNoClick0.getWidthMode());
-        extra.setHeightMode(mapNoClick0.getHeightMode());
+        /*
+         * This widget is a child of MAP_NOCLICK_0.
+         * Its position is therefore relative to MAP_NOCLICK_0, not the minimap parent.
+         */
+        extra.setXPositionMode(0);
+        extra.setYPositionMode(0);
+        extra.setWidthMode(0);
+        extra.setHeightMode(0);
 
-        if (extra.getXPositionMode() == 2)
-        {
-            // Right-anchored mode:
-            // larger OriginalX = visually left.
-            extra.setOriginalX(mapNoClick0.getOriginalX() + MAP_NOCLICK_EXTRA_MOVE_LEFT);
-        }
-        else
-        {
-            // Normal left-anchored mode:
-            // smaller OriginalX = visually left.
-            extra.setOriginalX(mapNoClick0.getOriginalX() - MAP_NOCLICK_EXTRA_MOVE_LEFT);
-        }
-
-        extra.setOriginalY(mapNoClick0.getOriginalY() - MAP_NOCLICK_EXTRA_MOVE_UP);
+        extra.setOriginalX(-MAP_NOCLICK_EXTRA_MOVE_LEFT);
+        extra.setOriginalY(-MAP_NOCLICK_EXTRA_MOVE_UP);
         extra.setOriginalWidth(Math.max(0, mapNoClick0.getOriginalWidth() + MAP_NOCLICK_EXTRA_EXTRA_WIDTH));
         extra.setOriginalHeight(MAP_NOCLICK_EXTRA_HEIGHT);
 
