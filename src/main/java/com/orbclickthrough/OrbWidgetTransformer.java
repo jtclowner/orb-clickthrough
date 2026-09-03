@@ -80,6 +80,38 @@ public class OrbWidgetTransformer
         allowClickThrough(client.getWidget(widgetId));
     }
 
+    /**
+     * Makes a widget and every current descendant click-through.
+     *
+     * Targeting the whole orb subtree makes this resilient to Jagex inserting a
+     * new visual or blocking layer beneath an existing, stable orb container.
+     * Calling this repeatedly is safe: allowClickThrough(Widget) records the
+     * original value only once for each widget instance.
+     */
+    public void allowClickThroughTree(int widgetId)
+    {
+        Widget root = client.getWidget(widgetId);
+
+        if (root == null)
+        {
+            return;
+        }
+
+        allowClickThrough(root);
+
+        Widget[] descendants = root.getNestedChildren();
+
+        if (descendants == null)
+        {
+            return;
+        }
+
+        for (Widget descendant : descendants)
+        {
+            allowClickThrough(descendant);
+        }
+    }
+
     public void allowClickThrough(Widget widget)
     {
         if (widget == null)
@@ -140,29 +172,18 @@ public class OrbWidgetTransformer
     }
 
     public void updateNoClickRegions(
-            int modernMapNoClick1,
-            int modernMapNoClick2,
-            int modernMapNoClick3,
-            int modernMapNoClick4,
-            int modernMapNoClick5,
-            int classicMapNoClick1,
-            int classicMapNoClick2,
-            int classicMapNoClick3,
-            int classicMapNoClick4,
-            int classicMapNoClick5
+            int mapNoClick1,
+            int mapNoClick2,
+            int mapNoClick3,
+            int mapNoClick4,
+            int mapNoClick5
     )
     {
-        shrinkFromLeft(modernMapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
-        shrinkFromLeft(modernMapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
-        shrinkFromRight(modernMapNoClick3, MAP_NOCLICK_3_SHRINK_RIGHT);
-        shrinkFromLeftAndRight(modernMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, MAP_NOCLICK_4_SHRINK_RIGHT);
-        shrinkFromRight(modernMapNoClick5, MAP_NOCLICK_5_SHRINK_RIGHT);
-
-        shrinkFromLeft(classicMapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
-        shrinkFromLeft(classicMapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
-        shrinkFromRight(classicMapNoClick3, MAP_NOCLICK_3_SHRINK_RIGHT);
-        shrinkFromLeftAndRight(classicMapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, MAP_NOCLICK_4_SHRINK_RIGHT);
-        shrinkFromRight(classicMapNoClick5, MAP_NOCLICK_5_SHRINK_RIGHT);
+        shrinkFromLeft(mapNoClick1, MAP_NOCLICK_1_SHRINK_LEFT);
+        shrinkFromLeft(mapNoClick2, MAP_NOCLICK_2_SHRINK_LEFT);
+        shrinkFromRight(mapNoClick3, MAP_NOCLICK_3_SHRINK_RIGHT);
+        shrinkFromLeftAndRight(mapNoClick4, MAP_NOCLICK_4_SHRINK_LEFT, MAP_NOCLICK_4_SHRINK_RIGHT);
+        shrinkFromRight(mapNoClick5, MAP_NOCLICK_5_SHRINK_RIGHT);
     }
 
     public void restoreNoClickRegions(
